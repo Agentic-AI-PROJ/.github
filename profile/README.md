@@ -75,4 +75,4 @@ graph TD
 | **My MCP Server** | Custom MCP server providing tools (Weather, FireTV). | `mcp-server/my-mcp-server` |
 
 ---
-*Built with ❤️ by the Agentic AI Team.*
+*Built with vibe by the Agentic AI Team.*
