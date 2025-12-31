@@ -17,25 +17,46 @@ Our agents are powered by **LangGraph**, enabling them to plan, execute, researc
 
 ```mermaid
 graph TD
-    START((START)) --> Router{needsPlanning?}
+    START((START)) --> Router{needsPlanning?<br/>Model: gemini-2.0-flash-lite}
 
-    %% Planning Phase
-    Router -- COMPLEX --> Planning[Planning Node]
-    Router -- SIMPLE --> LLM[LLM Call]
-    Planning --> LLM
+    %% Planning Phase & Research Loop
+    Router -- "No Req / Empty" --> LLM[LLM Call <br/> Decision Node <br/> Model: gemini-2.5-flash-lite]
+    Router -- COMPLEX --> Planning[Planning Node <br/> Model: gemini-2.5-flash-lite]
+    Router -- SIMPLE --> LLM
     
-    %% Execution Loop
+    Planning -- "Ready to Plan" --> LLM
+    Planning -- "Need Info (Research)" --> Tool[Tool Node]
+
+    %% Main Execution Loop
     LLM --> Check{shouldContinue?}
-    Check -- "tool_call" --> Tool[Tool Node]
-    Check -- "ready_to_reply" --> Final[Final Answer]
     
-    %% Tool Execution & Feedback
+    %% Branches from Decision
+    Check -- "Msg > 12 OR <br/> Size > 200k & Msg > 5" --> Summarize[Summarize Node <br/> Model: gemini-2.0-flash-lite]
+    Check -- "tool_call" --> Tool
+    Check -- "ready_to_reply" --> Final[Final Answer Node <br/> Model: gemini-2.5-flash-lite]
+    Check -- "Steps >= 30 <br/> or No Msg" --> END((END))
+    
+    %% Tool Execution & Replanning & Research Return
     Tool --> ReplanCheck{shouldReplan?}
-    ReplanCheck -- "Success" --> LLM
-    ReplanCheck -- "Failure/Loop" --> Replanner[Replanner Node]
-    Replanner --> LLM
+    ReplanCheck -- "Researching (No Plan)" --> Planning
+    ReplanCheck -- "Execution Success" --> LLM
+    ReplanCheck -- "Failure >= 2 <br/> Loop Detected <br/> Steps >= 20" --> Replanner[Replanner Node <br/> Model: gemini-2.5-flash-lite]
+    Replanner -- "New Plan" --> LLM
     
-    Final --> END((END))
+    %% Summarization Loop
+    Summarize -- "Context Compressed" --> LLM
+    
+    %% Terminal States
+    Final --> END
+    
+    %% Styling
+    classDef plain fill:#000,stroke:#333,stroke-width:1px;
+    classDef special fill:#000,stroke:#01579b,stroke-width:2px;
+    classDef term fill:#000,stroke:#333,stroke-width:2px;
+    
+    class Planning,LLM,Tool,Replanner,Summarize,Final plain;
+    class Router,Check,ReplanCheck special;
+    class START,END term;
 ```
 
 ## 🚀 Service Ecosystem
